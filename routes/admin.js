@@ -36,9 +36,6 @@ router.get('/', async (req, res) => {
 router.get('/edit/:date', async (req, res) => {
   const schedule = await Schedule.findOne({ date: req.params.date });
   if (!schedule) return res.redirect('/admin');
-  console.log(schedule.periods);
-// res.render('editDate', { schedule });
-
   res.render('editDate', { schedule });
 });
 
