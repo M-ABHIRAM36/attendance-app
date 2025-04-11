@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Schedule for <%= schedule.date %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-4">
+  <h2 class="mb-4">🛠️ Edit Schedule – <%= schedule.dayName %> (<%= schedule.date %>)</h2>
+  <%
+  function to24Hour(timeStr) {
+    if (!timeStr) return '';
+    const [hourStr, minuteStr] = timeStr.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = minuteStr || '00';
+  
+    // Convert hour based on common 12h to 24h logic (basic assumption for PM times after 1)
+    if (hour >= 1 && hour <= 7) {
+      hour += 12;
+    }
+  
+    return `${hour.toString().padStart(2, '0')}:${minute}`;
+  }
+  %>
+  
+  <form action="/admin/edit/<%= schedule.date %>" method="POST">
+    <% schedule.periods.forEach((period, index) => { %>
+      <div class="card mb-3">
+        <div class="card-header">
+          Period <%= period.periodNo %>
+        </div>
+        <div class="card-body row g-3">
+          <input type="hidden" name="periods[<%= index %>][periodNo]" value="<%= period.periodNo %>">
+
+          <div class="col-md-4">
+            <label class="form-label">Subject</label>
+            <input type="text" name="periods[<%= index %>][subject]" value="<%= period.subject %>" class="form-control" required>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Start Time</label>
+            <input type="time" name="periods[<%= index %>][startTime]" value="<%= to24Hour(period.startTime) %>" class="form-control" required>
+          </div>
+          
+          <div class="col-md-3">
+            <label class="form-label">End Time</label>
+            <input type="time" name="periods[<%= index %>][endTime]" value="<%= to24Hour(period.endTime) %>" class="form-control" required>
+          </div>
+          
+
+          <div class="col-md-1 form-check">
+            <label class="form-check-label">Lab</label><br>
+            <input class="form-check-input" type="checkbox" name="periods[<%= index %>][isLab]" <%= period.isLab ? "checked" : "" %>>
+          </div>
+
+          <div class="col-md-1 form-check">
+            <label class="form-check-label">Active</label><br>
+            <input class="form-check-input" type="checkbox" name="periods[<%= index %>][active]" <%= period.active ? "checked" : "" %>>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+
+    <div class="form-check form-switch my-4">
+      <input class="form-check-input" type="checkbox" id="holidaySwitch" name="isHoliday" <%= schedule.isHoliday ? "checked" : "" %>>
+      <label class="form-check-label" for="holidaySwitch">Mark as Holiday</label>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Holiday Reason</label>
+      <input type="text" name="holidayReason" value="<%= schedule.holidayReason || '' %>" class="form-control">
+    </div>
+
+    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+    <a href="/admin" class="btn btn-secondary">↩️ Back</a>
+  </form>
+</body>
+</html>

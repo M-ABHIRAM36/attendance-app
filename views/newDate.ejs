@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create New Day Schedule</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-4">
+  <h2 class="mb-4">➕ Create Schedule for New Date</h2>
+
+  <form action="/admin/new" method="POST">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Day Name</label>
+        <select name="dayName" class="form-select" required>
+          <option value="">Select</option>
+          <option>Monday</option>
+          <option>Tuesday</option>
+          <option>Wednesday</option>
+          <option>Thursday</option>
+          <option>Friday</option>
+          <option>Saturday</option>
+        </select>
+      </div>
+    </div>
+
+    <% for (let i = 0; i < 6; i++) { %>
+      <div class="card mb-3">
+        <div class="card-header">Period <%= i + 1 %></div>
+        <div class="card-body row g-3">
+          <input type="hidden" name="periods[<%= i %>][periodNo]" value="<%= i + 1 %>">
+          <div class="col-md-4">
+            <label class="form-label">Subject</label>
+            <input type="text" name="periods[<%= i %>][subject]" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Start Time</label>
+            <input type="time" name="periods[<%= i %>][startTime]" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">End Time</label>
+            <input type="time" name="periods[<%= i %>][endTime]" class="form-control">
+          </div>
+          <div class="col-md-1 form-check">
+            <label class="form-check-label">Lab</label><br>
+            <input class="form-check-input" type="checkbox" name="periods[<%= i %>][isLab]">
+          </div>
+          <div class="col-md-1 form-check">
+            <label class="form-check-label">Active</label><br>
+            <input class="form-check-input" type="checkbox" name="periods[<%= i %>][active]" checked>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
+    <button type="submit" class="btn btn-primary">✅ Create</button>
+    <a href="/admin" class="btn btn-secondary">↩️ Cancel</a>
+  </form>
+</body>
+</html>

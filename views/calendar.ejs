@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Holiday Calendar</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .calendar-day {
+      width: 120px;
+      height: 100px;
+      border: 1px solid #ccc;
+      margin: 5px;
+      padding: 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .holiday {
+      background-color: #ffc6c6;
+      border-color: #ff4d4d;
+    }
+    .today {
+      border: 2px solid #000;
+    }
+  </style>
+</head>
+<body class="container py-4">
+<h2 class="mb-4">📆 Holiday Calendar Manager</h2>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <label>📅 Filter by Month</label>
+    <select id="monthFilter" class="form-select">
+      <option value="all">All Months</option>
+      <% 
+        const months = [...new Set(schedules.map(d => new Date(d.date).toLocaleString('default', { month: 'long' })))];
+        months.forEach((m, idx) => { 
+      %>
+        <option value="<%= m %>"><%= m %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="col-md-3 d-flex align-items-end">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="holidayOnly">
+      <label class="form-check-label" for="holidayOnly">Show Only Holidays</label>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap" id="calendarGrid">
+  <% schedules.forEach(day => { 
+      const dateObj = new Date(day.date);
+      const monthName = dateObj.toLocaleString('default', { month: 'long' });
+  %>
+    <div class="calendar-day <%= day.isHoliday ? 'holiday' : '' %>" 
+         data-date="<%= day.date %>" 
+         data-month="<%= monthName %>" 
+         data-holiday="<%= day.isHoliday %>">
+      <strong><%= day.date %></strong><br>
+      <%= day.dayName %><br>
+      <% if (day.isHoliday) { %>
+        <small><em><%= day.holidayReason %></em></small>
+      <% } %>
+    </div>
+  <% }) %>
+</div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="holidayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="holidayForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Toggle Holiday</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="date" id="modalDate">
+          <div class="mb-3">
+            <label class="form-label">Holiday?</label>
+            <select name="isHoliday" id="modalIsHoliday" class="form-select">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Reason</label>
+            <input type="text" name="holidayReason" id="modalReason" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">✅ Save</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const modal = new bootstrap.Modal(document.getElementById('holidayModal'));
+    const form = document.getElementById('holidayForm');
+
+    document.querySelectorAll('.calendar-day').forEach(el => {
+      el.addEventListener('click', () => {
+        const date = el.dataset.date;
+        const isHoliday = el.classList.contains('holiday');
+        const reason = el.querySelector('em')?.innerText || "";
+
+        document.getElementById('modalDate').value = date;
+        document.getElementById('modalIsHoliday').value = isHoliday ? 'false' : 'true';
+        document.getElementById('modalReason').value = reason;
+
+        modal.show();
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData);
+
+      const res = await fetch('/admin/calendar/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) window.location.reload();
+    });
+    // FILTERING
+document.getElementById('monthFilter').addEventListener('change', filterCalendar);
+document.getElementById('holidayOnly').addEventListener('change', filterCalendar);
+
+function filterCalendar() {
+  const selectedMonth = document.getElementById('monthFilter').value;
+  const holidayOnly = document.getElementById('holidayOnly').checked;
+
+  document.querySelectorAll('.calendar-day').forEach(day => {
+    const month = day.dataset.month;
+    const isHoliday = day.dataset.holiday === 'true';
+
+    const showByMonth = selectedMonth === 'all' || month === selectedMonth;
+    const showByHoliday = !holidayOnly || isHoliday;
+
+    if (showByMonth && showByHoliday) {
+      day.style.display = 'inline-block';
+    } else {
+      day.style.display = 'none';
+    }
+  });
+}
+
+  </script>
+</body>
+</html>

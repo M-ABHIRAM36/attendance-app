@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attendance Result</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .bunked { text-decoration: line-through; color: red; }
+  </style>
+</head>
+<body class="bg-white">
+  <div class="container mt-5">
+    <h2 class="text-center mb-4">📊 Attendance Summary</h2>
+
+    <div class="card p-4 shadow-sm mx-auto" style="max-width: 600px;">
+      <p><strong>Email:</strong> <%= email %></p>
+      <p><strong>Total Classes:</strong> <span id="totalClasses"><%= total %></span></p>
+      <p><strong>Attended Classes:</strong> <span id="attendedClasses"><%= attended %></span></p>
+      <p><strong>Required %:</strong> <%= required %></p>
+      <p><strong>Current %:</strong> <span id="currentPercentage"><%= currentPercentage %></span>%</p>
+      <div id="dynamicSummary">
+        <!-- Will fill via JS -->
+      </div>
+
+      <a href="/abhi/form" class="btn btn-secondary mt-3">🔁 Recalculate</a>
+    </div>
+
+    <% if (schedules && schedules.length > 0) { %>
+      <div class="mt-5">
+        <h4 class="text-center mb-3">📅 Class-wise Summary</h4>
+        <table class="table table-bordered table-hover bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Subjects (Click to Bunk)</th>
+              <th>Total Time</th>
+              <th>Class Count</th>
+              <th>Projected %</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleTable">
+            <% schedules.forEach((sch, i) => { 
+              const schDate = new Date(sch.date).toISOString().split('T')[0];
+              let dayTotal = 0;
+              sch.periods.forEach(p => {
+                if (!p.active) return;
+                const subj = p.subject.toLowerCase();
+                if (subj.includes('lab') && !subj.includes('bc')) dayTotal += 3;
+                else if (subj.includes('bc lab')) dayTotal += 2;
+                else if (subj.includes('minor')) dayTotal += 3;
+                else if (subj.includes('mc')) dayTotal += 2;
+                else dayTotal += 1;
+              });
+            %>
+              <tr data-index="<%= i %>" data-date="<%= sch.date %>">
+                <td><%= sch.date %></td>
+                <td><%= sch.dayName %></td>
+                <td>
+                  <% sch.periods.forEach((p, j) => {
+                    if (!p.active) return;
+                    const subj = p.subject.toLowerCase();
+                    let weight = 1;
+                    if (subj.includes('lab') && !subj.includes('bc')) weight = 3;
+                    else if (subj.includes('bc lab')) weight = 2;
+                    else if (subj.includes('minor')) weight = 3;
+                    else if (subj.includes('mc')) weight = 2;
+                  %>
+                    <button class="btn btn-sm btn-outline-danger mb-1 toggle-btn" 
+                            data-index="<%= i %>" 
+                            data-period="<%= j %>" 
+                            data-weight="<%= weight %>">
+                      <%= p.subject %>
+                    </button><br>
+                  <% }) %>
+                </td>
+                <td><%= sch.totalTime %></td>
+                <td class="day-total"><%= dayTotal %></td>
+                <td class="projected">--</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+  <script>
+  
+    const initialAttended = <%= attended %>;
+    const initialTotal = <%= total %>;
+    const required = <%= required %>;
+    const currentDate = new Date().toISOString().split("T")[0];
+
+    
+    
+    let progressiveAttended = initialAttended;
+    let progressiveTotal = initialTotal;
+
+    const table = document.getElementById('scheduleTable');
+    const projectedCells = table.querySelectorAll(".projected");
+    const toggleButtons = table.querySelectorAll(".toggle-btn");
+
+    // Track bunks
+    const bunkMap = {};
+
+    function recalculate() {
+      progressiveAttended = initialAttended;
+      progressiveTotal = initialTotal;
+
+      let days = 0;
+      let safeDate = null;
+      let safeReached = false;
+
+      table.querySelectorAll("tr").forEach((row, idx) => {
+        const date = row.getAttribute("data-date");
+        if (date < currentDate || safeReached) return;
+
+        let rowTotal = 0;
+
+        row.querySelectorAll(".toggle-btn").forEach(btn => {
+          const weight = parseInt(btn.getAttribute("data-weight"));
+          const key = btn.getAttribute("data-index") + "-" + btn.getAttribute("data-period");
+
+          if (!bunkMap[key]) rowTotal += weight;
+        });
+
+        if (rowTotal === 0) return;
+        progressiveAttended += rowTotal;
+        progressiveTotal += rowTotal;
+
+        const percent = ((progressiveAttended / progressiveTotal) * 100).toFixed(2);
+        row.querySelector(".projected").innerHTML = `${percent}% ${percent >= required ? '<span class="badge bg-success ms-1">Safe</span>' : ''}`;
+
+        days++;
+
+        if (!safeReached && percent >= required) {
+          safeDate = date;
+          safeReached = true;
+        }
+      });
+
+      const finalPercent = ((progressiveAttended / progressiveTotal) * 100).toFixed(2);
+      document.getElementById("currentPercentage").textContent = finalPercent;
+
+      // Update summary
+      document.getElementById("dynamicSummary").innerHTML = `
+        <hr>
+        <h6 class="text-primary">📅 Estimated Time Required</h6>
+        <ul class="list-group">
+          <li class="list-group-item">📆 Days to Safe: <strong>${days}</strong></li>
+          <li class="list-group-item">📅 Weeks: <strong>${(days / 6).toFixed(2)}</strong></li>
+          <li class="list-group-item">🗓️ Months: <strong>${(days / 30).toFixed(2)}</strong></li>
+          ${safeDate ? `<li class="list-group-item">✅ Safe by: <strong>${safeDate}</strong></li>` : ''}
+        </ul>
+      `;
+    }
+
+    toggleButtons.forEach(btn => {
+      const key = btn.getAttribute("data-index") + "-" + btn.getAttribute("data-period");
+
+      btn.addEventListener("click", () => {
+        if (bunkMap[key]) {
+          delete bunkMap[key];
+          btn.classList.remove("bunked");
+        } else {
+          bunkMap[key] = true;
+          btn.classList.add("bunked");
+        }
+
+        recalculate();
+      });
+    });
+
+    recalculate(); // Initial calculation
+  </script>
+</body>
+</html>
+<!-- max its working -->

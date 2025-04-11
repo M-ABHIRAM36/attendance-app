@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attendance Result</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-white">
+  <div class="container mt-5">
+    <div class="d-flex justify-content-start mb-3">
+      <a href="/home" class="btn btn-secondary">⬅ Back to Home</a>
+    </div>
+    <h2 class="text-center mb-4">📊 Attendance Summary</h2>
+
+    <div class="card p-4 shadow-sm mx-auto" style="max-width: 600px;">
+      <p><strong>Email:</strong> <%= email %></p>
+      <p><strong>Total Classes:</strong> <%= total %></p>
+      <p><strong>Attended Classes:</strong> <%= attended %></p>
+      <p><strong>Required %:</strong> <%= required %></p>
+      <p><strong>Current %:</strong> <%= currentPercentage %></p>
+
+      <% 
+      let safeDate = null;
+      if (extraClassesNeeded > 0) { 
+        const today = new Date().toISOString().split('T')[0];
+        let progAttended = attended;
+        let progTotal = total;
+        let daysNeeded = 0;
+        let safeReached = false;
+
+        for (let sch of schedules) {
+          const schDate = new Date(sch.date).toISOString().split('T')[0];
+          if (schDate < today || safeReached || sch.isHoliday) continue;
+
+          let dayTotal = 0;
+          sch.periods.forEach(p => {
+            if (!p.active) return;
+            const subj = p.subject.toLowerCase();
+            if (subj.includes('lab') && !subj.includes('bc')) dayTotal += 3;
+            else if (subj.includes('bc lab')) dayTotal += 2;
+            else if (subj.includes('minor')) dayTotal += 3;
+            else if (subj.includes('mc')) dayTotal += 2;
+            else dayTotal += 1;
+          });
+
+          progAttended += dayTotal;
+          progTotal += dayTotal;
+
+          const percentage = (progAttended / progTotal) * 100;
+          daysNeeded++;
+
+          if (percentage >= required) {
+            safeDate = schDate;
+            safeReached = true;
+            break;
+          }
+        }
+
+        const weeksNeeded = (daysNeeded / 7).toFixed(1);
+        const monthsNeeded = (daysNeeded / 30).toFixed(1);
+      %>
+
+        <% if (safeReached) { %>
+          <hr>
+          <h6 class="text-primary">📅 Estimated Time Required</h6>
+          <ul class="list-group">
+            <li class="list-group-item">🕐 Classes Needed: <strong><%= extraClassesNeeded %></strong></li>
+            <li class="list-group-item">📆 Days to Safe: <strong><%= days %></strong></li>
+            <li class="list-group-item">📅 Weeks to Safe: <strong><%= weeks %></strong></li>
+            <li class="list-group-item">🗓️ Months (est.): <strong><%= months %></strong></li>
+            <% if (safeDate) { %>
+              <div class="alert alert-success text-center fw-semibold">
+                ✅ You’ll reach required attendance by <strong><%= new Date(safeDate).toDateString() %></strong>
+              </div>
+            <% } %>
+          </ul>
+        <% } else { %>
+          <div class="alert alert-warning mt-3">
+            ⚠️ Attendance may not reach the required percentage with the current schedule.
+          </div>
+        <% } %>
+      <% } %>
+
+      <hr>
+      <h5 class="<%= currentPercentage >= required ? 'text-success' : 'text-danger' %>"><%= message %></h5>
+
+      <a href="/student/form?email=<%= email %>" class="btn btn-secondary mt-3">🔁 Recalculate</a>
+    </div>
+
+    <% if (schedules && schedules.length > 0) { 
+      let progressiveAttended = attended;
+      let progressiveTotal = total;
+      const today = new Date().toISOString().split('T')[0];
+    %>
+      <div class="mt-5">
+        <h4 class="text-center mb-3">📅 Class-wise Summary</h4>
+        <table class="table table-bordered table-hover bg-white">
+          <thead class="table-dark">
+            <tr>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Subjects</th>
+              <th>Total Time (min)</th>
+              <th>Total Classes</th>
+              <th>Projected %</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% schedules.forEach(sch => { 
+              const schDate = new Date(sch.date).toISOString().split('T')[0];
+              let dayTotal = 0;
+              const isHoliday = sch.isHoliday;
+
+              if (!isHoliday) {
+                sch.periods.forEach(p => {
+                  if (!p.active) return;
+                  const subj = p.subject.toLowerCase();
+                  if (subj.includes('lab') && !subj.includes('bc')) dayTotal += 3;
+                  else if (subj.includes('bc lab')) dayTotal += 2;
+                  else if (subj.includes('minor')) dayTotal += 3;
+                  else if (subj.includes('mc')) dayTotal += 2;
+                  else dayTotal += 1;
+                });
+              }
+
+              let projectedPercentage = currentPercentage;
+              if (schDate >= today && !isHoliday) {
+                progressiveAttended += dayTotal;
+                progressiveTotal += dayTotal;
+                projectedPercentage = ((progressiveAttended / progressiveTotal) * 100).toFixed(2);
+              }
+            %>
+              <tr>
+                <td><%= sch.date %></td>
+                <td><%= sch.dayName %></td>
+                <td>
+                  <% if (isHoliday) { %>
+                    <span class="text-danger">Holiday: <%= sch.holidayReason || "No reason provided" %></span>
+                  <% } else {
+                    sch.periods.forEach(p => {
+                      if (p.active) { %>
+                        <div><%= p.subject %></div>
+                  <% }}) } %>
+                </td>
+                <td><%= sch.totalTime %></td>
+                <td><%= dayTotal %></td>
+                <td>
+                  <% if (schDate >= today && !isHoliday) { %>
+                    <%= projectedPercentage %>% 
+                    <% if (projectedPercentage >= required) { %>
+                      <span class="badge bg-success ms-1">Safe</span>
+                    <% } else { %>
+                      <span class="badge bg-warning text-dark ms-1">Improving</span>
+                    <% } %>
+                  <% } else if (isHoliday) { %>
+                    <span class="text-muted">Holiday</span>
+                  <% } else { %>
+                    <span class="text-muted">--</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>
