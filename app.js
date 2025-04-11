@@ -42,8 +42,9 @@ app.use('/abhi',abhi);
 app.get('/home', (req, res) => {
   res.render('index');
 });
-
-
+app.get('/', (req, res) => {
+  res.redirect('/home');   
+});
 
 app.get('/timetable', (req, res) => {
   const timetable = {
