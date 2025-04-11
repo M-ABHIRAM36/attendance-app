@@ -104,12 +104,8 @@ router.post('/calculate', async (req, res) => {
     total,
     attended,
     required,
-    currentPercentage: currentPercentage.toFixed(2),
-    message,
     extraClassesNeeded,
     days,
-    weeks,
-    months,
   });
 
 });
